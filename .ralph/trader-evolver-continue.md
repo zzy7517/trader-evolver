@@ -20,12 +20,12 @@ multi-agent trading pipeline with historical backtesting capabilities.
 ### Stage C - Collectors
 - [x] C3: Yahoo Finance daily collector (stocks/indices/VIX/DXY/commodities) → store.UpsertDailyMacro + UpsertCandles
 - [x] C4: Fear & Greed Index collector (alternative.me, full history) → store.UpsertFearGreed  
-- [ ] C5: `evolver collect` CLI command — orchestrate all collectors with config
+- [x] C5: `evolver collect` CLI command — orchestrate all collectors with config
 
 ### Stage D - Backtest Engine  
-- [ ] D1: Backtest time-travel engine — iterate historical days, reconstruct regime from store as-of lookups
-- [ ] D2: Forward-return backfill — after each simulated day, fill Return1d/5d/20d from actual prices
-- [ ] D3: Darwin weight evolution loop — score agents by rolling Sharpe, apply 1.05/0.95 daily updates
+- [x] D1: Backtest time-travel engine — iterate historical days, reconstruct regime from store as-of lookups
+- [x] D2: Forward-return backfill — after each simulated day, fill Return1d/5d/20d from actual prices (integrated in engine.go)
+- [x] D3: Darwin weight evolution loop — score agents by rolling Sharpe, apply 1.05/0.95 daily updates (integrated in engine.go)
 - [ ] D4: Autoresearch integration — identify worst agent, generate prompt mod, 5-day eval, keep/revert
 
 ### Stage E - Advanced Features (from atlas-gic)
