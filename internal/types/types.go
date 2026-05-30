@@ -271,9 +271,9 @@ type Candle struct {
 // DailyMacro holds a daily macro snapshot for a single series (one key per row).
 // Used for VIX / DXY / S&P etc. fetched from Yahoo. Value is the daily close.
 type DailyMacro struct {
-	Series  string  `json:"series"` // e.g. "VIX", "DXY", "SPX"
-	DateMs  int64   `json:"dateMs"` // midnight-UTC epoch millis for the day
-	Close   float64 `json:"close"`
+	Series string  `json:"series"` // e.g. "VIX", "DXY", "SPX"
+	DateMs int64   `json:"dateMs"` // midnight-UTC epoch millis for the day
+	Close  float64 `json:"close"`
 }
 
 // FearGreed is one daily Crypto Fear & Greed Index reading from alternative.me.

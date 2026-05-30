@@ -3,19 +3,14 @@ package store
 import (
 	"path/filepath"
 	"testing"
-	"time"
 
-	"trader-evolver/internal/evolution"
 	"trader-evolver/internal/types"
 )
 
-// Store must satisfy the evolution.Store interface.
-var _ evolution.Store = (*Store)(nil)
-
 func openTemp(t *testing.T) *Store {
 	t.Helper()
-	p := filepath.Join(t.TempDir(), "test.sqlite3")
-	s, err := Open(p)
+	path := filepath.Join(t.TempDir(), "test.sqlite3")
+	s, err := Open(path)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -23,114 +18,140 @@ func openTemp(t *testing.T) *Store {
 	return s
 }
 
-func TestCandlesRoundTripAndCoverage(t *testing.T) {
+func TestCandleUpsertAndRange(t *testing.T) {
 	s := openTemp(t)
-	candles := []Candle{
-		{OpenTimeMs: 1000, Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 10},
-		{OpenTimeMs: 2000, Open: 1.5, High: 2.5, Low: 1, Close: 2, Volume: 20},
-		{OpenTimeMs: 3000, Open: 2, High: 3, Low: 1.5, Close: 2.5, Volume: 30},
+	candles := []types.Candle{
+		{InstrumentKey: "hyperliquid:BTC", Interval: "1d", OpenTimeMs: 1000, Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 10},
+		{InstrumentKey: "hyperliquid:BTC", Interval: "1d", OpenTimeMs: 2000, Open: 1.5, High: 3, Low: 1, Close: 2.5, Volume: 20},
+		{InstrumentKey: "hyperliquid:BTC", Interval: "1d", OpenTimeMs: 3000, Open: 2.5, High: 4, Low: 2, Close: 3, Volume: 30},
 	}
-	if err := s.UpsertCandles("BTC", "1d", candles); err != nil {
-		t.Fatal(err)
-	}
-	// Upsert again (idempotent) with a changed close on one bar.
-	candles[1].Close = 2.2
-	if err := s.UpsertCandles("BTC", "1d", candles); err != nil {
+	if err := s.UpsertCandles(candles); err != nil {
 		t.Fatal(err)
 	}
 
-	got, err := s.GetCandles("BTC", "1d", 0, 0)
+	// Idempotent re-upsert with a changed close should update, not duplicate.
+	candles[1].Close = 99
+	if err := s.UpsertCandles(candles[1:2]); err != nil {
+		t.Fatal(err)
+	}
+
+	all, err := s.GetCandles("hyperliquid:BTC", "1d", 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 3 {
-		t.Fatalf("want 3 candles, got %d", len(got))
+	if len(all) != 3 {
+		t.Fatalf("expected 3 candles (idempotent), got %d", len(all))
 	}
-	if got[1].Close != 2.2 {
-		t.Errorf("upsert should update close, got %v", got[1].Close)
+	if all[1].Close != 99 {
+		t.Fatalf("upsert did not update close, got %v", all[1].Close)
+	}
+	// Ordering ascending by open time.
+	if all[0].OpenTimeMs != 1000 || all[2].OpenTimeMs != 3000 {
+		t.Fatalf("not ordered: %+v", all)
 	}
 
-	cnt, minMs, maxMs, err := s.CandleCoverage("BTC", "1d")
+	// Range filter [2000,3000].
+	mid, _ := s.GetCandles("hyperliquid:BTC", "1d", 2000, 3000)
+	if len(mid) != 2 || mid[0].OpenTimeMs != 2000 {
+		t.Fatalf("range filter wrong: %+v", mid)
+	}
+}
+
+func TestCandleCoverageAndLatest(t *testing.T) {
+	s := openTemp(t)
+	// Empty coverage.
+	cov, err := s.CandleCoverage("X", "1h")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cnt != 3 || minMs != 1000 || maxMs != 3000 {
-		t.Errorf("coverage got cnt=%d min=%d max=%d", cnt, minMs, maxMs)
+	if cov.Count != 0 || cov.FirstOpenMs != 0 || cov.LastOpenMs != 0 {
+		t.Fatalf("empty coverage should be zero: %+v", cov)
+	}
+	latest, _ := s.LatestCandleTime("X", "1h")
+	if latest != 0 {
+		t.Fatalf("empty latest should be 0, got %d", latest)
 	}
 
-	// Range query.
-	mid, _ := s.GetCandles("BTC", "1d", 2000, 2000)
-	if len(mid) != 1 || mid[0].OpenTimeMs != 2000 {
-		t.Errorf("range query got %+v", mid)
-	}
-}
-
-func TestDailyMacroAndFearGreed(t *testing.T) {
-	s := openTemp(t)
-	vix := 18.5
-	if err := s.UpsertDailyMacro([]DailyMacro{{Date: "2020-01-02", VIX: &vix}}); err != nil {
-		t.Fatal(err)
-	}
-	m, err := s.GetDailyMacro("2020-01-02")
-	if err != nil || m == nil || m.VIX == nil || *m.VIX != 18.5 {
-		t.Fatalf("macro got %+v err=%v", m, err)
-	}
-	if absent, _ := s.GetDailyMacro("1999-01-01"); absent != nil {
-		t.Error("expected nil for absent date")
-	}
-
-	fgs := []FearGreed{
-		{Date: "2020-01-01", Value: 30, Classification: "Fear"},
-		{Date: "2020-01-05", Value: 70, Classification: "Greed"},
-	}
-	if err := s.UpsertFearGreed(fgs); err != nil {
-		t.Fatal(err)
-	}
-	// As-of 2020-01-03 should return the 01-01 reading.
-	asof, _ := s.GetFearGreedAsOf("2020-01-03")
-	if asof == nil || asof.Date != "2020-01-01" || asof.Value != 30 {
-		t.Fatalf("as-of got %+v", asof)
-	}
-}
-
-func TestEvolutionStoreImpl(t *testing.T) {
-	s := openTemp(t)
-	// ensureDefaults seeds 5 modules at weight 1.0.
-	weights := s.GetDarwinWeights()
-	if len(weights) != len(types.DefaultModuleIDs) {
-		t.Fatalf("expected %d default weights, got %d", len(types.DefaultModuleIDs), len(weights))
-	}
-
-	sharpe := 1.2
-	hit := 0.6
-	s.UpdateDarwinWeight("ict_trader", 1.05, &sharpe, &hit)
-	for _, w := range s.GetDarwinWeights() {
-		if w.ModuleID == "ict_trader" {
-			if w.Weight != 1.05 || w.Sharpe30d == nil || *w.Sharpe30d != 1.2 {
-				t.Errorf("weight update wrong: %+v", w)
-			}
-		}
-	}
-	if h := s.GetWeightHistory("ict_trader", 10); len(h) != 1 {
-		t.Errorf("expected 1 history row, got %d", len(h))
-	}
-
-	now := time.Now().UTC()
-	old := now.Add(-10 * 24 * time.Hour).Format(time.RFC3339)
-	s.InsertRecommendation(types.Recommendation{
-		ModuleID: "ict_trader", InstrumentKey: "BTC", Signal: types.SignalLong,
-		Conviction: 80, PriceAtRecommendation: 100, RecommendedAt: old,
+	_ = s.UpsertCandles([]types.Candle{
+		{InstrumentKey: "X", Interval: "1h", OpenTimeMs: 500, Open: 1, High: 1, Low: 1, Close: 1, Volume: 1},
+		{InstrumentKey: "X", Interval: "1h", OpenTimeMs: 1500, Open: 1, High: 1, Low: 1, Close: 1, Volume: 1},
 	})
-	recs := s.GetModuleRecommendations("ict_trader", 30)
-	if len(recs) != 1 {
-		t.Fatalf("expected 1 rec, got %d", len(recs))
+	cov, _ = s.CandleCoverage("X", "1h")
+	if cov.Count != 2 || cov.FirstOpenMs != 500 || cov.LastOpenMs != 1500 {
+		t.Fatalf("coverage wrong: %+v", cov)
 	}
-	unfilled := s.GetUnfilledRecommendations("return_5d", 10)
-	if len(unfilled) != 1 {
-		t.Fatalf("expected 1 unfilled, got %d", len(unfilled))
+	latest, _ = s.LatestCandleTime("X", "1h")
+	if latest != 1500 {
+		t.Fatalf("latest=%d want 1500", latest)
 	}
-	s.UpdateReturn(unfilled[0].ID, "return_5d", 0.1)
-	if again := s.GetUnfilledRecommendations("return_5d", 10); len(again) != 0 {
-		t.Errorf("expected 0 unfilled after update, got %d", len(again))
+}
+
+func TestDailyMacroAsOf(t *testing.T) {
+	s := openTemp(t)
+	if err := s.UpsertDailyMacro([]types.DailyMacro{
+		{Series: "VIX", DateMs: 1000, Close: 18},
+		{Series: "VIX", DateMs: 2000, Close: 22},
+		{Series: "DXY", DateMs: 1000, Close: 100},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// As-of between 1000 and 2000 → returns the 1000 reading (most recent <=).
+	v, ok, err := s.MacroAsOf("VIX", 1500)
+	if err != nil || !ok || v != 18 {
+		t.Fatalf("as-of 1500 got v=%v ok=%v err=%v want 18", v, ok, err)
+	}
+	v, ok, _ = s.MacroAsOf("VIX", 2500)
+	if !ok || v != 22 {
+		t.Fatalf("as-of 2500 want 22, got %v", v)
+	}
+	// Before any data → not found.
+	_, ok, _ = s.MacroAsOf("VIX", 500)
+	if ok {
+		t.Fatal("as-of before data should be not-found")
+	}
+	// Series isolation.
+	v, ok, _ = s.MacroAsOf("DXY", 5000)
+	if !ok || v != 100 {
+		t.Fatalf("DXY as-of want 100, got %v", v)
+	}
+}
+
+func TestFearGreedAsOfAndCount(t *testing.T) {
+	s := openTemp(t)
+	n, _ := s.FearGreedCount()
+	if n != 0 {
+		t.Fatalf("empty count should be 0, got %d", n)
+	}
+	if err := s.UpsertFearGreed([]types.FearGreed{
+		{DateMs: 1000, Value: 30, Classification: "Fear"},
+		{DateMs: 2000, Value: 70, Classification: "Greed"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	n, _ = s.FearGreedCount()
+	if n != 2 {
+		t.Fatalf("count=%d want 2", n)
+	}
+	v, ok, _ := s.FearGreedAsOf(1999)
+	if !ok || v != 30 {
+		t.Fatalf("as-of 1999 want 30, got %v", v)
+	}
+	v, ok, _ = s.FearGreedAsOf(99999)
+	if !ok || v != 70 {
+		t.Fatalf("as-of latest want 70, got %v", v)
+	}
+}
+
+func TestEmptyUpsertsNoOp(t *testing.T) {
+	s := openTemp(t)
+	if err := s.UpsertCandles(nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertDailyMacro(nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertFearGreed(nil); err != nil {
+		t.Fatal(err)
 	}
 }

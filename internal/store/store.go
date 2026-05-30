@@ -255,4 +255,72 @@ func (s *Store) MacroAsOf(series string, atMs int64) (float64, bool, error) {
 	var close sql.NullFloat64
 	err := s.db.QueryRow(`
         SELECT close FROM daily_macro
-        WHERE series=?
+        WHERE series=? AND date_ms <= ?
+        ORDER BY date_ms DESC LIMIT 1`, series, atMs).Scan(&close)
+	if err == sql.ErrNoRows {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("store: macro as-of: %w", err)
+	}
+	if !close.Valid {
+		return 0, false, nil
+	}
+	return close.Float64, true, nil
+}
+
+// ---- Fear & Greed ----
+
+// UpsertFearGreed inserts/replaces fear & greed rows in one transaction.
+func (s *Store) UpsertFearGreed(rows []types.FearGreed) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("store: begin: %w", err)
+	}
+	stmt, err := tx.Prepare(`
+        INSERT INTO feargreed (date_ms, value, classification) VALUES (?, ?, ?)
+        ON CONFLICT(date_ms) DO UPDATE SET value=excluded.value, classification=excluded.classification`)
+	if err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("store: prepare feargreed upsert: %w", err)
+	}
+	defer stmt.Close()
+	for _, r := range rows {
+		if _, err := stmt.Exec(r.DateMs, r.Value, r.Classification); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("store: upsert feargreed @%d: %w", r.DateMs, err)
+		}
+	}
+	return tx.Commit()
+}
+
+// FearGreedAsOf returns the most recent fear&greed value at or before atMs.
+func (s *Store) FearGreedAsOf(atMs int64) (int, bool, error) {
+	var value sql.NullInt64
+	err := s.db.QueryRow(`
+        SELECT value FROM feargreed
+        WHERE date_ms <= ?
+        ORDER BY date_ms DESC LIMIT 1`, atMs).Scan(&value)
+	if err == sql.ErrNoRows {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("store: feargreed as-of: %w", err)
+	}
+	if !value.Valid {
+		return 0, false, nil
+	}
+	return int(value.Int64), true, nil
+}
+
+// FearGreedCount returns the number of stored fear&greed rows.
+func (s *Store) FearGreedCount() (int64, error) {
+	var n int64
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM feargreed`).Scan(&n); err != nil {
+		return 0, fmt.Errorf("store: feargreed count: %w", err)
+	}
+	return n, nil
+}

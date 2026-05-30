@@ -24,21 +24,37 @@
       uuid for run id). End-to-end MockProvider test passing. STAGE B COMPLETE.
       New dep: github.com/google/uuid v1.6.0.
 
-- [x] C1. internal/store: pure-Go SQLite (modernc.org/sqlite v1.34.4, no CGO). Schema: candles
-      (PK key+interval+open_time_ms, upsert), daily_macro (vix/dxy), feargreed; evolution tables
-      (darwin_weights + history, recommendations). Implements evolution.Store (compile-time checked).
-      Helpers: UpsertCandles/GetCandles/CandleCoverage, Upsert+Get DailyMacro, FearGreed+GetAsOf,
-      GetWeightHistory. tests passing.
+- [x] C1. internal/store: pure-Go SQLite (modernc.org/sqlite v1.34.4, no CGO, WAL+busy_timeout).
+      Schema: candles (PK instrument_key+interval+open_time_ms, WITHOUT ROWID, idempotent upsert),
+      daily_macro (PK series+date_ms, for VIX/DXY/SPX), feargreed (PK date_ms). API:
+      Open/Close/DB; UpsertCandles/GetCandles(range)/CandleCoverage/LatestCandleTime;
+      UpsertDailyMacro/GetDailyMacro/MacroAsOf(<=t); UpsertFearGreed/FearGreedAsOf(<=t)/FearGreedCount.
+      As-of lookups (most-recent <= t) feed backtest regime reconstruction (D1). Added types.Candle/
+      DailyMacro/FearGreed/Coverage. Tests cover upsert idempotency, range, coverage, as-of, isolation.
+      NOTE: repaired a truncated/unterminated store.go from a prior turn (HEAD c9e48d9 did not compile).
+      NOTE: a concurrent turn's half-finished C2 collectors (wrong store API) parked under .ralph-wip/.
 
 ## Next
 - [ ] C2. internal/collectors: Binance /fapi/v1/klines paginated multi-year fetch (rate-limit+retry)
-      -> store.UpsertCandles (BTC/ETH/SOL)
+      -> store.UpsertCandles([]types.Candle) for BTC/ETH/SOL. Reuse paging logic in .ralph-wip/.
 
 ## Stage tracker
 - Stage A (skeleton + pure logic): A1✅ A2✅ A3✅ A4✅ A5✅ A6✅
 - Stage B (LLM + modules): B1✅ B2✅ B3✅ B4✅
 - Stage C (collectors + store): C1✅ C2 C3 C4 C5
 - Stage D (backtest engine): D1 D2 D3 D4
+
+## Reflection (iter 9)
+- Done: Stage A (6/6) + Stage B (4/4) + C1. Core logic, LLM layer, orchestrator, SQLite store all
+  ported + tested; 8 commits; full suite green.
+- Working: layered port order builds on tested foundations; MockProvider runs pipeline offline;
+  1:1 fidelity via per-file `git show` checks.
+- Friction (resolved): edit churn in internal/modules iter6 (helper sigs shifted); fixed by reverting
+  to committed state. Detached-HEAD source reads handled via `git show feat/multi-agent-evolution:...`.
+- Adjustment: none. C2-D4 are net-new code (collectors + backtest), lower fidelity risk. Keep network
+  calls behind interfaces / injectable HTTP base URLs so tests stay offline.
+- Next: C2 Binance -> C3 Yahoo -> C4 F&G -> C5 collect CLI -> Stage D (the payoff: prove Darwin
+  weights evolve over historical replay).
 
 ## Notes
 - IMPORTANT: the mytradebot worktree HEAD is detached at origin/main, which does NOT
