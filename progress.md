@@ -8,12 +8,16 @@
 - [x] A5. evolution: darwin_weights + scorecard + recommendation_tracker (+ tests passing)
 - [x] A6. prompt_composer → internal/modules (+ tests passing) — STAGE A COMPLETE
 
+- [x] B1. internal/llm: Codex provider (SSE Responses API, retry/backoff, ~/.codex/auth.json or
+      CODEX_API_KEY, JWT account-id) + deterministic MockProvider (+ tests passing).
+      Provider iface: Call(ctx, system, user) (content string, tokens int, err error) + Name().
+
 ## Next
-- [ ] B1. internal/llm: Codex provider (reads ~/.codex/auth.json, Responses API) + mock provider
+- [ ] B2. module_runner → internal/modules (call Provider, parse JSON, fallback neutral on parse fail)
 
 ## Stage tracker
 - Stage A (skeleton + pure logic): A1✅ A2✅ A3✅ A4✅ A5✅ A6✅
-- Stage B (LLM + modules): B1 B2 B3 B4
+- Stage B (LLM + modules): B1✅ B2 B3 B4
 - Stage C (collectors + store): C1 C2 C3 C4 C5
 - Stage D (backtest engine): D1 D2 D3 D4
 
