@@ -43,15 +43,54 @@
       DB store+coverage, incremental resume (0 new), retry-on-500. All passing. Reconciled the
       concurrent WIP (wrong store API) and removed .ralph-wip/collectors-c2-wip.
 
-## Next
-- [ ] C3. internal/collectors: Yahoo Finance daily collector (stocks/indices/commodities/VIX/DXY)
-      → store.UpsertDailyMacro / UpsertCandles. e.g. AAPL/MSFT/SPY/^VIX/^GSPC/MSTR/GC=F/CL=F.
+- [x] C3. internal/collectors/yahoo.go: Yahoo Finance daily collector (stocks/indices/VIX/DXY/commodities)
+      → store.UpsertDailyMacro / UpsertCandles. Retry/backoff, nil-bar skip, midnight-UTC normalization.
+      Tests: parse, nil bars, httptest, store integration, incremental, retry-on-500.
+
+- [x] C4. internal/collectors/feargreed.go: Fear & Greed Index collector (alternative.me, limit=0).
+      FetchAll / FetchRecent / Collect / CollectIncremental. Retry/backoff. Tests passing.
+
+- [x] C5. cmd/evolver: CLI scaffold with collect/backtest/report subcommands.
+      `evolver collect`: orchestrates Binance + Yahoo + Fear&Greed with --incremental, --start, --db.
+      `evolver backtest`: full historical replay with --mock, --instrument, --start, --end.
+      `evolver report`: data coverage summary + JSON output.
+
+- [x] D1. internal/backtest/engine.go: Time-travel backtest engine.
+      Iterates trading days, reconstructs regime from as-of lookups, runs full 4-layer pipeline via
+      orchestrator, records recommendations, backfills forward returns (1d/5d/20d), updates Darwin
+      weights daily. OnDayComplete callback. Tests: basic flow, no-data, cancel, backfill, weight evolution.
+
+- [x] D2. Forward-return backfill: integrated in engine.go (backfillReturns method).
+
+- [x] D3. Darwin weight evolution: integrated in engine.go (updateDarwinWeights method).
+      Rolling Sharpe per module → top quartile ×1.05, bottom quartile ×0.95, clamped [0.3, 2.5].
+
+- [x] D4. internal/backtest/autoresearch.go: Self-improvement loop (atlas-gic autoresearch port).
+      FindWorstAgent (Sharpe-based), GenerateModification (LLM), EvaluateModification (keep/revert),
+      cooldown tracking. Tests: worst-agent selection, cooldown, trigger timing, modification eval.
+
+- [x] E1. internal/janus/janus.go: JANUS meta-weighting layer.
+      Multi-cohort blending (softmax + floor/ceiling constraints), emergent regime detection
+      (NOVEL/HISTORICAL/MIXED from weight differentials), conviction-weighted recommendation blending
+      with disagreement penalty. Tests: equal weights, better cohort, floor, regime detection, blend.
+
+- [x] E2. internal/reflexivity/reflexivity.go: Soros reflexivity engine.
+      5 feedback loops: Price→Fundamentals, P&L→Behaviour, Narrative→Flows, Market→Policy,
+      Reversal Detection. Configurable thresholds, severity levels. Tests: all loop types, multi-signal.
+
+- [x] E3+F1+F2. CLI commands wired up. `evolver backtest --mock` runs full offline replay.
+
+- [x] F3. End-to-end integration test: store → engine → Darwin → JANUS → reflexivity.
+      Verifies recommendations generated, returns backfilled, weights evolved, JANUS blends,
+      reflexivity detects signals. All passing.
 
 ## Stage tracker
 - Stage A (skeleton + pure logic): A1✅ A2✅ A3✅ A4✅ A5✅ A6✅
 - Stage B (LLM + modules): B1✅ B2✅ B3✅ B4✅
-- Stage C (collectors + store): C1✅ C2✅ C3 C4 C5
-- Stage D (backtest engine): D1 D2 D3 D4
+- Stage C (collectors + store): C1✅ C2✅ C3✅ C4✅ C5✅
+- Stage D (backtest engine): D1✅ D2✅ D3✅ D4✅
+- Stage E (advanced features): E1✅ E2✅ E3✅
+- Stage F (CLI + integration): F1✅ F2✅ F3✅
 
 ## Reflection (iter 9)
 - Done: Stage A (6/6) + Stage B (4/4) + C1. Core logic, LLM layer, orchestrator, SQLite store all

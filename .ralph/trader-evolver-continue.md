@@ -26,17 +26,17 @@ multi-agent trading pipeline with historical backtesting capabilities.
 - [x] D1: Backtest time-travel engine — iterate historical days, reconstruct regime from store as-of lookups
 - [x] D2: Forward-return backfill — after each simulated day, fill Return1d/5d/20d from actual prices (integrated in engine.go)
 - [x] D3: Darwin weight evolution loop — score agents by rolling Sharpe, apply 1.05/0.95 daily updates (integrated in engine.go)
-- [ ] D4: Autoresearch integration — identify worst agent, generate prompt mod, 5-day eval, keep/revert
+- [x] D4: Autoresearch integration — identify worst agent, generate prompt mod, 5-day eval, keep/revert
 
 ### Stage E - Advanced Features (from atlas-gic)
-- [ ] E1: JANUS meta-layer — multi-cohort blending with emergent regime detection
-- [ ] E2: Reflexivity engine — model feedback loops (price→fundamentals, P&L→behavior, etc.)
-- [ ] E3: Report generation — equity curve, agent weights over time, modification log
+- [x] E1: JANUS meta-layer — multi-cohort blending with emergent regime detection
+- [x] E2: Reflexivity engine — model feedback loops (price→fundamentals, P&L→behavior, etc.)
+- [x] E3: Report generation — equity curve, agent weights over time, modification log
 
 ### Stage F - CLI & Integration
-- [ ] F1: `evolver backtest` command — run full historical replay
-- [ ] F2: `evolver report` command — generate backtest summaries
-- [ ] F3: End-to-end integration test with mock data
+- [x] F1: `evolver backtest` command — run full historical replay
+- [x] F2: `evolver report` command — generate backtest summaries
+- [x] F3: End-to-end integration test with mock data
 
 ## Verification
 - All tests passing: `go test ./...`
