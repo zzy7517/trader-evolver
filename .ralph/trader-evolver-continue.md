@@ -18,8 +18,8 @@ multi-agent trading pipeline with historical backtesting capabilities.
 ## Checklist
 
 ### Stage C - Collectors
-- [ ] C3: Yahoo Finance daily collector (stocks/indices/VIX/DXY/commodities) → store.UpsertDailyMacro + UpsertCandles
-- [ ] C4: Fear & Greed Index collector (alternative.me, full history) → store.UpsertFearGreed  
+- [x] C3: Yahoo Finance daily collector (stocks/indices/VIX/DXY/commodities) → store.UpsertDailyMacro + UpsertCandles
+- [x] C4: Fear & Greed Index collector (alternative.me, full history) → store.UpsertFearGreed  
 - [ ] C5: `evolver collect` CLI command — orchestrate all collectors with config
 
 ### Stage D - Backtest Engine  
