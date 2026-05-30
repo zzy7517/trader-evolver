@@ -18,13 +18,19 @@
       CROOutput; LLM error AND parse failure both fail-safe to Approved=false/RiskLevel=HIGH;
       toBool/toStringSlice/validateRiskLevel/formatThousands helpers; shared toNumber/toStr). tests passing.
 
+- [x] B4. orchestrator → internal/orchestrator (Deps struct of fn fields like tradex OrchestratorDeps;
+      L1 regime → L2 5 modules via goroutines+WaitGroup → L3 synth + CRO short-circuit (<3 agree or
+      NEUTRAL = PASS) → L4 decision w/ calcRR + posSize + R:R<1.5 gate; running guard; OnComplete;
+      uuid for run id). End-to-end MockProvider test passing. STAGE B COMPLETE.
+      New dep: github.com/google/uuid v1.6.0.
+
 ## Next
-- [ ] B4. orchestrator → internal/orchestrator (4-layer串联: regime → 5 modules in goroutines →
-      synthesizer → CRO; onComplete callback; end-to-end run with MockProvider)
+- [ ] C1. internal/store: SQLite schema (candles / daily_macro / feargreed) + store impl,
+      and evolution.Store impl (darwin_weights, recommendations)
 
 ## Stage tracker
 - Stage A (skeleton + pure logic): A1✅ A2✅ A3✅ A4✅ A5✅ A6✅
-- Stage B (LLM + modules): B1✅ B2✅ B3✅ B4
+- Stage B (LLM + modules): B1✅ B2✅ B3✅ B4✅
 - Stage C (collectors + store): C1 C2 C3 C4 C5
 - Stage D (backtest engine): D1 D2 D3 D4
 
