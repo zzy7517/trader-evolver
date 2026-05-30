@@ -250,3 +250,44 @@ const (
 	WeightGrowthFactor  = 1.05
 	WeightDecayFactor   = 0.95
 )
+
+// ============================================================================
+// Historical data (collectors + store)
+// ============================================================================
+
+// Candle is one OHLCV bar, keyed by instrument + interval + open time.
+// Mirrors tradex/domain/price_action.ts Candle (openTimeMs in epoch millis).
+type Candle struct {
+	InstrumentKey string  `json:"instrumentKey"`
+	Interval      string  `json:"interval"` // e.g. "1d", "4h", "1h", "1m"
+	OpenTimeMs    int64   `json:"openTimeMs"`
+	Open          float64 `json:"open"`
+	High          float64 `json:"high"`
+	Low           float64 `json:"low"`
+	Close         float64 `json:"close"`
+	Volume        float64 `json:"volume"`
+}
+
+// DailyMacro holds a daily macro snapshot for a single series (one key per row).
+// Used for VIX / DXY / S&P etc. fetched from Yahoo. Value is the daily close.
+type DailyMacro struct {
+	Series  string  `json:"series"` // e.g. "VIX", "DXY", "SPX"
+	DateMs  int64   `json:"dateMs"` // midnight-UTC epoch millis for the day
+	Close   float64 `json:"close"`
+}
+
+// FearGreed is one daily Crypto Fear & Greed Index reading from alternative.me.
+type FearGreed struct {
+	DateMs         int64  `json:"dateMs"` // day epoch millis
+	Value          int    `json:"value"`  // 0-100
+	Classification string `json:"classification"`
+}
+
+// Coverage summarizes the stored range for a (instrumentKey, interval) series.
+type Coverage struct {
+	InstrumentKey string `json:"instrumentKey"`
+	Interval      string `json:"interval"`
+	Count         int64  `json:"count"`
+	FirstOpenMs   int64  `json:"firstOpenMs"`
+	LastOpenMs    int64  `json:"lastOpenMs"`
+}

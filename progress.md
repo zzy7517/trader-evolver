@@ -24,14 +24,20 @@
       uuid for run id). End-to-end MockProvider test passing. STAGE B COMPLETE.
       New dep: github.com/google/uuid v1.6.0.
 
+- [x] C1. internal/store: pure-Go SQLite (modernc.org/sqlite v1.34.4, no CGO). Schema: candles
+      (PK key+interval+open_time_ms, upsert), daily_macro (vix/dxy), feargreed; evolution tables
+      (darwin_weights + history, recommendations). Implements evolution.Store (compile-time checked).
+      Helpers: UpsertCandles/GetCandles/CandleCoverage, Upsert+Get DailyMacro, FearGreed+GetAsOf,
+      GetWeightHistory. tests passing.
+
 ## Next
-- [ ] C1. internal/store: SQLite schema (candles / daily_macro / feargreed) + store impl,
-      and evolution.Store impl (darwin_weights, recommendations)
+- [ ] C2. internal/collectors: Binance /fapi/v1/klines paginated multi-year fetch (rate-limit+retry)
+      -> store.UpsertCandles (BTC/ETH/SOL)
 
 ## Stage tracker
 - Stage A (skeleton + pure logic): A1✅ A2✅ A3✅ A4✅ A5✅ A6✅
 - Stage B (LLM + modules): B1✅ B2✅ B3✅ B4✅
-- Stage C (collectors + store): C1 C2 C3 C4 C5
+- Stage C (collectors + store): C1✅ C2 C3 C4 C5
 - Stage D (backtest engine): D1 D2 D3 D4
 
 ## Notes
