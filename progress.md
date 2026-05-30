@@ -12,12 +12,15 @@
       CODEX_API_KEY, JWT account-id) + deterministic MockProvider (+ tests passing).
       Provider iface: Call(ctx, system, user) (content string, tokens int, err error) + Name().
 
+- [x] B2. module_runner → internal/modules (Provider call, JSON parse w/ code-fence strip,
+      signal/conviction validation+clamp, LLM-err & parse-fail both fall back to neutral+Error). tests passing.
+
 ## Next
-- [ ] B2. module_runner → internal/modules (call Provider, parse JSON, fallback neutral on parse fail)
+- [ ] B3. adversarial CRO → internal/modules (LLM challenge, parse fail = fail-safe reject/PASS)
 
 ## Stage tracker
 - Stage A (skeleton + pure logic): A1✅ A2✅ A3✅ A4✅ A5✅ A6✅
-- Stage B (LLM + modules): B1✅ B2 B3 B4
+- Stage B (LLM + modules): B1✅ B2✅ B3 B4
 - Stage C (collectors + store): C1 C2 C3 C4 C5
 - Stage D (backtest engine): D1 D2 D3 D4
 
