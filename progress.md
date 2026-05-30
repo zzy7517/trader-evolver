@@ -14,13 +14,17 @@
 
 - [x] B2. module_runner → internal/modules (Provider call, JSON parse w/ code-fence strip,
       signal/conviction validation+clamp, LLM-err & parse-fail both fall back to neutral+Error). tests passing.
+- [x] B3. adversarial CRO → internal/modules/adversarial.go (ComposeCRO → Provider.Call → parse
+      CROOutput; LLM error AND parse failure both fail-safe to Approved=false/RiskLevel=HIGH;
+      toBool/toStringSlice/validateRiskLevel/formatThousands helpers; shared toNumber/toStr). tests passing.
 
 ## Next
-- [ ] B3. adversarial CRO → internal/modules (LLM challenge, parse fail = fail-safe reject/PASS)
+- [ ] B4. orchestrator → internal/orchestrator (4-layer串联: regime → 5 modules in goroutines →
+      synthesizer → CRO; onComplete callback; end-to-end run with MockProvider)
 
 ## Stage tracker
 - Stage A (skeleton + pure logic): A1✅ A2✅ A3✅ A4✅ A5✅ A6✅
-- Stage B (LLM + modules): B1✅ B2✅ B3 B4
+- Stage B (LLM + modules): B1✅ B2✅ B3✅ B4
 - Stage C (collectors + store): C1 C2 C3 C4 C5
 - Stage D (backtest engine): D1 D2 D3 D4
 
