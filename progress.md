@@ -34,14 +34,23 @@
       NOTE: repaired a truncated/unterminated store.go from a prior turn (HEAD c9e48d9 did not compile).
       NOTE: a concurrent turn's half-finished C2 collectors (wrong store API) parked under .ralph-wip/.
 
+- [x] C2. internal/collectors/binance.go: BinanceCollector for /fapi/v1/klines (USDT-M futures).
+      Pages with cursor=lastOpen+1, stops on empty/partial page; per-page retry w/ exp backoff on
+      429/5xx/network; PageDelay throttle; ctx cancellation honored. parseBinanceKlines tags each
+      bar with instrument_key+interval (Binance returns OHLCV as JSON strings → coerced). API:
+      FetchKlines / Collect (→ UpsertCandles([]types.Candle)) / CollectIncremental (resume from
+      store.LatestCandleTime). httptest-based tests: parse+tagging, multi-page pagination (1550 bars),
+      DB store+coverage, incremental resume (0 new), retry-on-500. All passing. Reconciled the
+      concurrent WIP (wrong store API) and removed .ralph-wip/collectors-c2-wip.
+
 ## Next
-- [ ] C2. internal/collectors: Binance /fapi/v1/klines paginated multi-year fetch (rate-limit+retry)
-      -> store.UpsertCandles([]types.Candle) for BTC/ETH/SOL. Reuse paging logic in .ralph-wip/.
+- [ ] C3. internal/collectors: Yahoo Finance daily collector (stocks/indices/commodities/VIX/DXY)
+      → store.UpsertDailyMacro / UpsertCandles. e.g. AAPL/MSFT/SPY/^VIX/^GSPC/MSTR/GC=F/CL=F.
 
 ## Stage tracker
 - Stage A (skeleton + pure logic): A1✅ A2✅ A3✅ A4✅ A5✅ A6✅
 - Stage B (LLM + modules): B1✅ B2✅ B3✅ B4✅
-- Stage C (collectors + store): C1✅ C2 C3 C4 C5
+- Stage C (collectors + store): C1✅ C2✅ C3 C4 C5
 - Stage D (backtest engine): D1 D2 D3 D4
 
 ## Reflection (iter 9)
